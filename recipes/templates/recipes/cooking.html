@@ -1,0 +1,120 @@
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="{{ language|default:'kk' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if language == "ru" %}Режим приготовления{% else %}Дайындау режимі{% endif %} · SmartChef</title>
+    <link rel="stylesheet" href="{% static 'recipes/style.css' %}">
+    <script src="{% static 'recipes/cooking.js' %}" defer></script>
+</head>
+<body class="cooking-page">
+    <main class="cooking-shell">
+        <header class="cooking-header">
+            <a class="cooking-brand" href="{% url 'recipes:index' %}">SmartChef</a>
+            <span class="cooking-mode-label">
+                {% if language == "ru" %}Режим приготовления{% else %}Дайындау режимі{% endif %}
+            </span>
+        </header>
+
+        <section class="cooking-card"
+                 id="cooking-app"
+                 data-language="{{ language|default:'kk' }}"
+                 data-total="{{ recipe_data.steps|length }}"
+                 data-recipe-url="{{ recipe_url|default:'/' }}"
+                 data-fixture="{{ demo_fixture|yesno:'true,false' }}">
+
+            <div class="cooking-heading">
+                <p class="cooking-eyebrow">
+                    {% if language == "ru" %}ГОТОВИМ ПОШАГОВО{% else %}ҚАДАММЕН ДАЙЫНДАЙМЫЗ{% endif %}
+                </p>
+                <h1 id="cooking-title">{{ recipe_data.title }}</h1>
+                <p class="cooking-description">
+                    {% if language == "ru" %}
+                        Выполняйте шаги по порядку и подтверждайте каждый завершённый этап.
+                    {% else %}
+                        Қадамдарды ретімен орындап, әр аяқталған кезеңді растаңыз.
+                    {% endif %}
+                </p>
+            </div>
+
+            <section class="cooking-ingredients">
+                <h2>{% if language == "ru" %}Ингредиенты{% else %}Құрамы{% endif %}</h2>
+                <ul>
+                    {% for ingredient in recipe_data.ingredients %}
+                        <li>{{ ingredient }}</li>
+                    {% endfor %}
+                </ul>
+            </section>
+
+            <div class="cooking-progress-row">
+                <span id="cooking-step-label">
+                    {% if language == "ru" %}Шаг{% else %}Қадам{% endif %}
+                    <span id="current-step-number">1</span>/<span id="total-step-number">{{ recipe_data.steps|length }}</span>
+                </span>
+                <span id="cooking-completed-label" aria-live="polite">
+                    {% if language == "ru" %}Выполнено{% else %}Орындалды{% endif %}
+                    <span id="completed-step-number">0</span>/<span>{{ recipe_data.steps|length }}</span>
+                </span>
+            </div>
+
+            <div class="cooking-progress-track"
+                 role="progressbar"
+                 aria-label="{% if language == 'ru' %}Прогресс приготовления{% else %}Дайындау барысы{% endif %}"
+                 aria-valuemin="0"
+                 aria-valuemax="{{ recipe_data.steps|length }}"
+                 aria-valuenow="0"
+                 id="cooking-progress-track">
+                <div class="cooking-progress-fill" id="cooking-progress-fill"></div>
+            </div>
+
+            <section class="cooking-step-panel" id="cooking-step-panel">
+                <p class="cooking-step-kicker">
+                    {% if language == "ru" %}ТЕКУЩИЙ ШАГ{% else %}ҚАЗІРГІ ҚАДАМ{% endif %}
+                </p>
+                <h2 id="step-heading">
+                    {% if language == "ru" %}Шаг{% else %}Қадам{% endif %} 1
+                </h2>
+                <p id="step-text" class="cooking-step-text">{{ recipe_data.steps.0 }}</p>
+            </section>
+
+            <section class="cooking-complete-panel" id="cooking-complete-panel" hidden>
+                <div class="cooking-complete-icon" aria-hidden="true">✓</div>
+                <h2>
+                    {% if language == "ru" %}Рецепт готов!{% else %}Дайындау аяқталды!{% endif %}
+                </h2>
+                <p>
+                    {% if language == "ru" %}
+                        Вы завершили все шаги. Приятного аппетита!
+                    {% else %}
+                        Барлық қадам орындалды. Асыңыз дәмді болсын!
+                    {% endif %}
+                </p>
+                <button type="button" class="cooking-button cooking-button-primary" id="restart-cooking">
+                    {% if language == "ru" %}Начать заново{% else %}Қайта бастау{% endif %}
+                </button>
+            </section>
+
+            <p class="cooking-status" id="cooking-status" role="status" aria-live="polite"></p>
+
+            <div class="cooking-actions" id="cooking-actions">
+                <button type="button" class="cooking-button cooking-button-secondary" id="previous-step" disabled>
+                    {% if language == "ru" %}Назад{% else %}Артқа{% endif %}
+                </button>
+                <button type="button" class="cooking-button cooking-button-primary" id="confirm-step">
+                    {% if language == "ru" %}Подтвердить шаг{% else %}Қадамды растау{% endif %}
+                </button>
+            </div>
+
+            <footer class="cooking-footer">
+                <a href="{{ recipe_url|default:'/' }}">
+                    {% if language == "ru" %}Вернуться к рецепту{% else %}Рецептке оралу{% endif %}
+                </a>
+            </footer>
+        </section>
+    </main>
+
+    {{ recipe_data|json_script:"cooking-recipe-data" }}
+</body>
+</html>

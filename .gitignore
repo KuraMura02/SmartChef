@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.sqlite3-*
+media/
+uploads/
+recipes_before_lab05/
