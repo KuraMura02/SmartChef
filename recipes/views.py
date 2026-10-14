@@ -1,4 +1,4 @@
-
+import json
 import os
 import uuid
 from pathlib import Path
@@ -323,6 +323,29 @@ def saved_recipes(request):
         language = "kk"
 
     recipes = SavedRecipe.objects.all()
+
+    # Разбираем сохранённый JSON каждого рецепта
+    for saved in recipes:
+        saved.display_title = "Рецепт"
+        saved.display_ingredients = []
+        saved.display_steps = []
+
+        raw_recipe = saved.recipe or ""
+
+        try:
+            if raw_recipe.startswith("SMARTCHEF_JSON_V1"):
+                raw_recipe = raw_recipe.split("\n", 1)[1]
+
+            data = json.loads(raw_recipe)
+
+            saved.display_title = data.get("title") or "Рецепт"
+            saved.display_ingredients = data.get("ingredients", [])
+            saved.display_steps = data.get("steps", [])
+
+        except (ValueError, IndexError, TypeError, AttributeError):
+            # Если старый рецепт не в формате JSON,
+            # показываем его текст как есть
+            saved.display_steps = [raw_recipe] if raw_recipe else []
 
     return render(
         request,

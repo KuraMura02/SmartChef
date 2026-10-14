@@ -137,80 +137,69 @@
 
             {% for saved in recipes %}
 
-                <article class="card saved-recipe-card">
+                
+<article class="card saved-recipe-card">
 
-                    <div class="recipe-header">
+    <div class="recipe-header">
+        <div>
+            <span class="result-label">
+                {% if language == "kk" %}
+                    Сақталған рецепт
+                {% else %}
+                    Сохранённый рецепт
+                {% endif %}
+            </span>
 
-                        <div>
+            <h2>{{ saved.display_title }}</h2>
+        </div>
 
-                            <span class="result-label">
+        <span class="time-badge">
+            {{ saved.minutes }} мин
+        </span>
+    </div>
 
-                                {% if saved.language == "kk" %}
-                                    Сақталған рецепт
-                                {% else %}
-                                    Сохранённый рецепт
-                                {% endif %}
+    <section class="saved-meta">
+        <strong>
+            {% if language == "kk" %}Құрамы{% else %}Ингредиенты{% endif %}
+        </strong>
 
-                            </span>
+        {% if saved.display_ingredients %}
+            <ul class="saved-ingredients">
+                {% for ingredient in saved.display_ingredients %}
+                    <li>{{ ingredient }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>{{ saved.products }}</p>
+        {% endif %}
 
-                            <h2>
-                                Рецепт
-                            </h2>
+        {% if saved.vegetarian %}
+            <span class="diet-badge">
+                {% if language == "kk" %}Етсіз{% else %}Без мяса{% endif %}
+            </span>
+        {% endif %}
+    </section>
 
-                        </div>
+    {% if saved.display_steps %}
+        <section class="recipe-text">
+            <h3>
+                {% if language == "kk" %}Дайындау жолы{% else %}Приготовление{% endif %}
+            </h3>
 
+            <ol class="saved-steps">
+                {% for step in saved.display_steps %}
+                    <li>{{ step }}</li>
+                {% endfor %}
+            </ol>
+        </section>
+    {% endif %}
 
-                        <span class="time-badge">
-                            {{ saved.minutes }} мин
-                        </span>
+    <div class="saved-date">
+        {{ saved.created_at|date:"d.m.Y H:i" }}
+    </div>
 
-                    </div>
+</article>
 
-
-                    <div class="saved-meta">
-
-                        <strong>
-
-                            {% if saved.language == "kk" %}
-                                Өнімдер
-                            {% else %}
-                                Продукты
-                            {% endif %}
-
-                        </strong>
-
-                        <span>
-                            {{ saved.products }}
-                        </span>
-
-
-                        {% if saved.vegetarian %}
-
-                            <span class="diet-badge">
-
-                                {% if saved.language == "kk" %}
-                                    Етсіз
-                                {% else %}
-                                    Без мяса
-                                {% endif %}
-
-                            </span>
-
-                        {% endif %}
-
-                    </div>
-
-
-                    <div class="recipe-text">
-                        {{ saved.recipe }}
-                    </div>
-
-
-                    <div class="saved-date">
-                        {{ saved.created_at|date:"d.m.Y H:i" }}
-                    </div>
-
-                </article>
 
             {% endfor %}
 

@@ -1,3 +1,0 @@
-python-dotenvDjango>=6.0,<7.0
-google-genai
-python-dotenv
