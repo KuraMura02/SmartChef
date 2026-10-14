@@ -108,7 +108,7 @@ python -m django --version
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-3.5-flash-lite
+GEMINI_MODEL=gemini-3.8-flash
 ```
 
 `your_gemini_api_key` орнына өзіңіздің API кілтіңізді енгізіңіз. Модель атауын жобада қолданылатын нақты модельге сәйкес көрсетіңіз.
