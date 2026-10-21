@@ -1,142 +1,187 @@
-{% load static %}
 
+{% load static %}
 <!DOCTYPE html>
 <html lang="{% if language == 'ru' %}ru{% else %}kk{% endif %}">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
-        {% if language == "kk" %}
-            Менің рецепттерім
-        {% else %}
-            Мои рецепты
-        {% endif %}
+        {% if language == "kk" %}Менің рецепттерім{% else %}Мои рецепты{% endif %}
         · SmartChef
     </title>
+    <link rel="stylesheet" href="{% static 'recipes/style.css' %}">
+    <style>
+        .editor-form {
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid #e7ded2;
+        }
 
-    <link
-        rel="stylesheet"
-        href="{% static 'recipes/style.css' %}"
-    >
+        .editor-form label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
 
+        .editor-form textarea {
+            display: block;
+            width: 100%;
+            min-height: 100px;
+            box-sizing: border-box;
+            padding: 12px;
+            border: 1px solid #cbbba8;
+            border-radius: 10px;
+            background: #fffaf4;
+            color: #4b382a;
+            font: inherit;
+            resize: vertical;
+        }
+
+        .editor-help,
+        .editor-status {
+            margin-top: 8px;
+            font-size: 0.9rem;
+        }
+
+        .editor-status {
+            color: #5a3e2b;
+        }
+
+        .editor-error {
+            margin-top: 12px;
+            color: #9b2c2c;
+            white-space: pre-wrap;
+        }
+
+        .editor-proposal {
+            margin-top: 16px;
+            padding: 14px;
+            border-radius: 10px;
+            background: #fffaf4;
+            border: 1px solid #e7ded2;
+        }
+
+        .editor-proposal pre {
+            margin: 0;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            font: inherit;
+        }
+
+        .editor-submit:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+        
+        .saved-recipe-row {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 24px;
+            align-items: start;
+        }
+
+        .saved-recipe-row.is-editing {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .saved-recipe-row > article {
+            min-width: 0;
+            margin: 0;
+        }
+
+        .editor-card {
+            border: 1px solid #cbbba8;
+            background: #fffaf4;
+        }
+
+        .editor-card h2 {
+            margin-top: 0;
+        }
+
+        .editor-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .editor-actions form {
+            margin: 0;
+        }
+
+        .editor-actions button {
+            font: inherit;
+            cursor: pointer;
+        }
+
+        @media (max-width: 800px) {
+            .saved-recipe-row.is-editing {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+    </style>
 </head>
 
-
 <body>
-
 <main class="page">
-
-
     <header class="site-header">
-
         <div>
-
-            <div class="brand">
-                SmartChef
-            </div>
-
-            {% if language == "kk" %}
-
-                <p class="subtitle">
+            <div class="brand">SmartChef</div>
+            <p class="subtitle">
+                {% if language == "kk" %}
                     Сақталған рецепттеріңіз бір жерде.
-                </p>
-
-            {% else %}
-
-                <p class="subtitle">
+                {% else %}
                     Все сохранённые рецепты в одном месте.
-                </p>
-
-            {% endif %}
-
+                {% endif %}
+            </p>
         </div>
 
-
         <nav class="top-nav">
-
             <a href="{% url 'recipes:index' %}?language={{ language }}">
-
-                {% if language == "kk" %}
-                    Рецепт жасау
-                {% else %}
-                    Создать рецепт
-                {% endif %}
-
+                {% if language == "kk" %}Рецепт жасау{% else %}Создать рецепт{% endif %}
             </a>
-
         </nav>
-
     </header>
 
-
     <section class="saved-toolbar card">
-
         <div>
-
-            <span class="result-label">
-                SmartChef
-            </span>
-
+            <span class="result-label">SmartChef</span>
             <h1>
-
-                {% if language == "kk" %}
-                    Менің рецепттерім
-                {% else %}
-                    Мои рецепты
-                {% endif %}
-
+                {% if language == "kk" %}Менің рецепттерім{% else %}Мои рецепты{% endif %}
             </h1>
-
             <p>
-
                 {% if language == "kk" %}
                     Бұрын сақталған рецепттерді осы жерден көре аласыз.
                 {% else %}
                     Здесь находятся ваши ранее сохранённые рецепты.
                 {% endif %}
-
             </p>
-
         </div>
 
-
         <div class="language-buttons">
-
             <a
                 href="{% url 'recipes:saved_recipes' %}?language=kk"
                 class="language-button {% if language == 'kk' %}active{% endif %}"
                 aria-current="{% if language == 'kk' %}page{% else %}false{% endif %}"
-            >
-                Қазақша
-            </a>
-
+            >Қазақша</a>
 
             <a
                 href="{% url 'recipes:saved_recipes' %}?language=ru"
                 class="language-button {% if language == 'ru' %}active{% endif %}"
                 aria-current="{% if language == 'ru' %}page{% else %}false{% endif %}"
-            >
-                Русский
-            </a>
-
+            >Русский</a>
         </div>
-
     </section>
 
-
+    
     {% if recipes %}
-
         <section class="saved-grid">
-
             {% for saved in recipes %}
+                <div class="saved-recipe-row {% if editing_recipe_id == saved.id %}is-editing{% endif %}">
 
+<<<<<<< HEAD
                 
 <article class="card saved-recipe-card">
 
@@ -199,62 +244,272 @@
     </div>
 
 </article>
+=======
+                    <!-- Левая карточка: исходный рецепт -->
+                    <article class="card saved-recipe-card">
+                        <div class="recipe-header">
+                            <div>
+                                <span class="result-label">
+                                    {% if saved.language == "kk" %}
+                                        Бастапқы рецепт
+                                    {% else %}
+                                        Исходный рецепт
+                                    {% endif %}
+                                </span>
+                                <h2>
+                                    {% if language == "kk" %}Рецепт{% else %}Рецепт{% endif %}
+                                </h2>
+                            </div>
 
+                            <span class="time-badge">{{ saved.minutes }} мин</span>
+                        </div>
 
+                        <div class="saved-meta">
+                            <strong>
+                                {% if language == "kk" %}Өнімдер{% else %}Продукты{% endif %}
+                            </strong>
+                            <span>{{ saved.products }}</span>
+
+                            {% if saved.vegetarian %}
+                                <span class="diet-badge">
+                                    {% if language == "kk" %}Етсіз{% else %}Без мяса{% endif %}
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <div class="recipe-text">{{ saved.recipe }}</div>
+>>>>>>> 9681321 (Add AI recipe editing with confirmation)
+
+                        <div class="saved-date">
+                            {{ saved.created_at|date:"d.m.Y H:i" }}
+                        </div>
+
+<<<<<<< HEAD
+=======
+                        {% if editing_recipe_id != saved.id %}
+                            <p>
+                                <a
+                                    class="primary-button inline-button"
+                                    href="{% url 'recipes:edit_saved_recipe' saved.token %}?language={{ language }}"
+                                >
+                                    {% if language == "kk" %}
+                                        Рецептті өзгерту
+                                    {% else %}
+                                        Изменить рецепт
+                                    {% endif %}
+                                </a>
+                            </p>
+                        {% endif %}
+                    </article>
+
+                    <!-- Правая карточка: запрос и предложение ИИ -->
+                    {% if editing_recipe_id == saved.id %}
+                        <article class="card editor-card">
+                            <span class="result-label">SmartChef AI</span>
+
+                            <h2>
+                                {% if language == "kk" %}
+                                    Рецептті өзгерту
+                                {% else %}
+                                    Предложение ИИ
+                                {% endif %}
+                            </h2>
+
+                            {% if not proposal %}
+                                <form
+                                    class="editor-form"
+                                    method="post"
+                                    action="{% url 'recipes:edit_saved_recipe' saved.token %}?language={{ language }}"
+                                    data-editor-form
+                                >
+                                    {% csrf_token %}
+                                    <input type="hidden" name="language" value="{{ language }}">
+                                    <input type="hidden" name="action" value="generate">
+
+                                    <label for="edit-query-{{ saved.id }}">
+                                        {% if language == "kk" %}
+                                            Қалай өзгерткіңіз келеді?
+                                        {% else %}
+                                            Как изменить рецепт?
+                                        {% endif %}
+                                    </label>
+
+                                    <textarea
+                                        id="edit-query-{{ saved.id }}"
+                                        name="edit_query"
+                                        minlength="3"
+                                        maxlength="300"
+                                        required
+                                        placeholder="{% if language == 'kk' %}Мысалы: Пештің орнына табада дайындауға бейімде{% else %}Например: Адаптируй для приготовления на сковороде вместо духовки{% endif %}"
+                                    >{{ edit_query }}</textarea>
+
+                                    <p class="editor-help">
+                                        {% if language == "kk" %}
+                                            3–300 таңба. Алдымен ұсыныс жасалады, рецепт әлі сақталмайды.
+                                        {% else %}
+                                            3–300 символов. Сначала создаётся предложение, рецепт пока не сохраняется.
+                                        {% endif %}
+                                    </p>
+
+                                    <button class="primary-button editor-submit" type="submit">
+                                        {% if language == "kk" %}
+                                            Ұсыныс алу
+                                        {% else %}
+                                            Получить предложение
+                                        {% endif %}
+                                    </button>
+
+                                    <p
+                                        class="editor-status"
+                                        data-editor-status
+                                        role="status"
+                                        aria-live="polite"
+                                        hidden
+                                    >
+                                        {% if language == "kk" %}
+                                            Ұсыныс дайындалуда, күте тұрыңыз...
+                                        {% else %}
+                                            Готовим предложение, подождите...
+                                        {% endif %}
+                                    </p>
+                                </form>
+                            {% endif %}
+
+                            {% if edit_error %}
+                                <p class="editor-error" role="alert">{{ edit_error }}</p>
+                            {% endif %}
+
+                            {% if proposal %}
+                                <div class="editor-proposal">
+                                    <h3>
+                                        {% if language == "kk" %}
+                                            Жаңа ұсыныс
+                                        {% else %}
+                                            Новый вариант
+                                        {% endif %}
+                                    </h3>
+
+                                    <pre>{{ proposal }}</pre>
+
+                                    <p class="editor-help">
+                                        {% if language == "kk" %}
+                                            Бастапқы рецепт өзгертілмеді. Растасаңыз ғана жаңа нұсқа сақталады.
+                                        {% else %}
+                                            Исходный рецепт пока не изменён. Новый вариант сохранится только после подтверждения.
+                                        {% endif %}
+                                    </p>
+
+                                    <div class="editor-actions">
+                                        <form
+                                            method="post"
+                                            action="{% url 'recipes:edit_saved_recipe' saved.token %}?language={{ language }}"
+                                        >
+                                            {% csrf_token %}
+                                            <input type="hidden" name="language" value="{{ language }}">
+                                            <input type="hidden" name="action" value="confirm">
+                                            <input type="hidden" name="proposal_token" value="{{ pending_token }}">
+
+                                            <button class="primary-button" type="submit">
+                                                {% if language == "kk" %}
+                                                    Қабылдау
+                                                {% else %}
+                                                    Принять
+                                                {% endif %}
+                                            </button>
+                                        </form>
+
+                                        <form
+                                            method="post"
+                                            action="{% url 'recipes:edit_saved_recipe' saved.token %}?language={{ language }}"
+                                        >
+                                            {% csrf_token %}
+                                            <input type="hidden" name="language" value="{{ language }}">
+                                            <input type="hidden" name="action" value="undo">
+                                            <input type="hidden" name="proposal_token" value="{{ pending_token }}">
+
+                                            <button class="language-button" type="submit">
+                                                {% if language == "kk" %}
+                                                    Қабылдамау
+                                                {% else %}
+                                                    Отклонить
+                                                {% endif %}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            <p style="margin-top: 16px;">
+                                <a
+                                    class="language-button"
+                                    href="{% url 'recipes:saved_recipes' %}?language={{ language }}"
+                                >
+                                    {% if language == "kk" %}
+                                        Жабу
+                                    {% else %}
+                                        Закрыть
+                                    {% endif %}
+                                </a>
+                            </p>
+                        </article>
+                    {% endif %}
+
+                </div>
+>>>>>>> 9681321 (Add AI recipe editing with confirmation)
             {% endfor %}
-
         </section>
 
-    {% else %}
-
         <section class="card empty-saved">
-
-            <div class="empty-icon">
-                🍽️
-            </div>
-
+            <div class="empty-icon">🍽️</div>
             <h2>
-
                 {% if language == "kk" %}
                     Әзірге сақталған рецепт жоқ
                 {% else %}
                     Сохранённых рецептов пока нет
                 {% endif %}
-
             </h2>
-
-
             <p>
-
                 {% if language == "kk" %}
                     Алдымен рецепт жасап, оны сақтап көріңіз.
                 {% else %}
                     Сначала создайте рецепт и сохраните его.
                 {% endif %}
-
             </p>
-
-
             <a
                 href="{% url 'recipes:index' %}?language={{ language }}"
                 class="primary-button inline-button"
             >
-
-                {% if language == "kk" %}
-                    Рецепт жасау
-                {% else %}
-                    Создать рецепт
-                {% endif %}
-
+                {% if language == "kk" %}Рецепт жасау{% else %}Создать рецепт{% endif %}
             </a>
-
         </section>
-
     {% endif %}
-
-
 </main>
 
-</body>
+<script>
+    document.querySelectorAll("[data-editor-form]").forEach((form) => {
+        form.addEventListener("submit", (event) => {
+            const field = form.querySelector("textarea[name='edit_query']");
+            const query = field.value.trim();
 
+            if (query.length < 3 || query.length > 300) {
+                event.preventDefault();
+                field.setCustomValidity(
+                    query.length < 3
+                        ? "Введите не менее 3 символов."
+                        : "Максимальная длина запроса — 300 символов."
+                );
+                field.reportValidity();
+                field.setCustomValidity("");
+                return;
+            }
+
+            const button = form.querySelector(".editor-submit");
+            const status = form.querySelector("[data-editor-status]");
+
+            button.disabled = true;
+            status.hidden = false;
+        });
+    });
+</script>
+</body>
 </html>

@@ -25,6 +25,25 @@ load_dotenv(BASE_DIR / ".env")
 ALLOWED_LANGUAGES = {"kk", "ru"}
 ALLOWED_TIMES = {"15", "30", "60"}
 
+def call_gemini(prompt, api_key=None, model=None):
+    """Существующий серверный способ обращения к Gemini."""
+    api_key = api_key or os.environ.get("GEMINI_API_KEY")
+    model = model or os.environ.get(
+        "GEMINI_MODEL",
+        "gemini-3.8-flash",
+    )
+
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY не найден.")
+
+    client = genai.Client(api_key=api_key)
+
+    interaction = client.interactions.create(
+        model=model,
+        input=prompt,
+    )
+
+    return interaction.output_text or ""
 
 def format_recipe_for_display(data, language):
     """Құрылымды рецептті пайдаланушыға оқуға ыңғайлы мәтінге айналдыру."""
@@ -204,14 +223,11 @@ def index(request):
 - Не добавляй комментарии и дополнительные ключи.
 """.strip()
 
-                client = genai.Client(api_key=api_key)
-
-                interaction = client.interactions.create(
-                    model=model,
-                    input=prompt,
-                )
-
-                raw_response = interaction.output_text or ""
+                raw_response = call_gemini(
+    prompt,
+    api_key=api_key,
+    model=model,
+)
 
                 if not raw_response.strip():
                     raise RecipeFormatError(
