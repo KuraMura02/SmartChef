@@ -1070,6 +1070,7 @@ label:has(input:focus-visible) {
     font-weight: 700;
     text-decoration: none;
     text-align: center;
+    width: auto;
 }
 
 .cooking-start-button:hover {

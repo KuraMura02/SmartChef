@@ -4,13 +4,14 @@ import uuid
 from pathlib import Path
 
 from dotenv import load_dotenv
+from django.contrib.messages import get_messages
 from google import genai
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from .catalog import CATEGORIES, PRODUCTS, build_products
-from .models import SavedRecipe
+from .models import RecipeVersion, SavedRecipe
 from .recipe_format import (
     RecipeFormatError,
     decode_recipe,
@@ -338,13 +339,15 @@ def saved_recipes(request):
     if language not in ALLOWED_LANGUAGES:
         language = "kk"
 
-    recipes = SavedRecipe.objects.all()
+    recipes = SavedRecipe.objects.prefetch_related("versions").all()
 
-    # Разбираем сохранённый JSON каждого рецепта
+    # Подготавливаем историю версий и разбираем JSON каждого рецепта.
     for saved in recipes:
+        saved.version_history = list(saved.versions.all())
         saved.display_title = "Рецепт"
         saved.display_ingredients = []
         saved.display_steps = []
+        saved.is_structured = False
 
         raw_recipe = saved.recipe or ""
 
@@ -358,6 +361,8 @@ def saved_recipes(request):
             saved.display_ingredients = data.get("ingredients", [])
             saved.display_steps = data.get("steps", [])
 
+            saved.is_structured = True
+
         except (ValueError, IndexError, TypeError, AttributeError):
             # Если старый рецепт не в формате JSON,
             # показываем его текст как есть
@@ -369,6 +374,9 @@ def saved_recipes(request):
         {
             "language": language,
             "recipes": recipes,
+            "cooking_url": reverse("recipes:cooking"),
+            # Явно передаём уведомления в шаблон после redirect.
+            "messages": get_messages(request),
         },
     )
 
