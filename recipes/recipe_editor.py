@@ -27,6 +27,11 @@ MIN_QUERY_LENGTH = 3
 MAX_QUERY_LENGTH = 300
 
 
+def _tr(language, kk, ru):
+    """Return a user-facing message in the selected interface language."""
+    return kk if language == "kk" else ru
+
+
 def _language(request):
     language = (
         request.POST.get("language")
@@ -109,7 +114,8 @@ def _render_editor(
         for key, value in _display_recipe_fields(recipe.recipe).items():
             setattr(recipe, key, value)
 
-    # Оставляем только одну последнюю версию для отката, чтобы не было дубликатов
+    # Показываем только один, самый свежий снимок даже если в БД остались
+    # дубликаты от предыдущей реализации.
     versions = RecipeVersion.objects.filter(
         saved_recipe=saved
     ).order_by("-created_at", "-id")[:1]
@@ -136,16 +142,18 @@ def _generate_proposal(saved, query, language):
     try:
         original_data = decode_recipe(saved.recipe)
     except RecipeFormatError as exc:
-        raise ValueError(
-            "Исходный рецепт имеет некорректный формат. "
-            "Предложение создать нельзя."
-        ) from exc
+        raise ValueError(_tr(
+            language,
+            "Бастапқы рецепт пішімі дұрыс емес. Өзгерту ұсынысын жасау мүмкін емес.",
+            "Исходный рецепт имеет некорректный формат. Предложение создать нельзя.",
+        )) from exc
 
     if original_data is None:
-        raise ValueError(
-            "Этот старый рецепт сохранён в текстовом формате. "
-            "Редактирование доступно для рецептов SMARTCHEF_JSON_V1."
-        )
+        raise ValueError(_tr(
+            language,
+            "Бұл ескі рецепт мәтін түрінде сақталған. Тек SMARTCHEF_JSON_V1 пішіміндегі рецепттерді өңдеуге болады.",
+            "Этот старый рецепт сохранён в текстовом формате. Редактирование доступно для рецептов SMARTCHEF_JSON_V1.",
+        ))
 
     original_json = json.dumps(original_data, ensure_ascii=False)
     query_json = json.dumps(query, ensure_ascii=False)
@@ -187,7 +195,7 @@ def _generate_proposal(saved, query, language):
     raw_response = call_gemini(prompt)
 
     if not raw_response or not raw_response.strip():
-        raise ValueError("Gemini вернул пустой ответ. Попробуй ещё раз.")
+        raise ValueError(_tr(language, "Gemini бос жауап қайтарды. Қайталап көр.", "Gemini вернул пустой ответ. Попробуй ещё раз."))
 
     candidate_data = parse_recipe_json(raw_response)
     return encode_recipe(candidate_data)
@@ -209,6 +217,10 @@ def _pending_matches(pending, saved, supplied_token):
     )
 
 
+def _saved_recipes_url(language):
+    return f"{reverse('recipes:saved_recipes')}?language={language}"
+
+
 @require_http_methods(["GET", "POST"])
 def edit_saved_recipe(request, token):
     language = _language(request)
@@ -223,10 +235,6 @@ def edit_saved_recipe(request, token):
     action = request.POST.get("action", "generate")
     pending = _clear_expired_pending(request)
 
-    # Вспомогательная функция для перевода сообщений
-    def msg(kk_text, ru_text):
-        return kk_text if language == "kk" else ru_text
-
     if action == "generate":
         query = request.POST.get("edit_query", "").strip()
 
@@ -236,13 +244,15 @@ def edit_saved_recipe(request, token):
                 saved,
                 language,
                 edit_query=query,
-                edit_error=msg("Сұраныс 3-тен 300 таңбаға дейін болуы керек.", "Запрос должен содержать от 3 до 300 символов."),
+                edit_error=_tr(language, "Сұрау 3 пен 300 таңба аралығында болуы керек.", "Запрос должен содержать от 3 до 300 символов."),
             )
 
         request.session.pop(PENDING_KEY, None)
         request.session.modified = True
 
         try:
+            # Считываем актуальную строку перед генерацией, чтобы сохранить
+            # именно тот снимок, на основе которого строилось предложение.
             saved.refresh_from_db(fields=["recipe"])
             original_recipe = saved.recipe
             candidate_recipe = _generate_proposal(saved, query, language)
@@ -263,7 +273,9 @@ def edit_saved_recipe(request, token):
                 saved,
                 language,
                 edit_query=query,
-                edit_error=str(exc),
+                edit_error=(
+                    _tr(language, f"Рецептті өңдеу қатесі: {exc}", f"Ошибка обработки рецепта: {exc}")
+                ),
             )
         except Exception:
             return _render_editor(
@@ -271,7 +283,9 @@ def edit_saved_recipe(request, token):
                 saved,
                 language,
                 edit_query=query,
-                edit_error=msg("Ұсыныс алу мүмкін болмады. Gemini баптауларын тексеріңіз.", "Не удалось получить предложение. Проверь доступность Gemini и настройки API."),
+                edit_error=(
+                    _tr(language, "Өзгерту ұсынысын алу мүмкін болмады. Gemini қолжетімділігін және API баптауларын тексер.", "Не удалось получить предложение. Проверь доступность Gemini и настройки API.")
+                ),
             )
 
         return _render_editor(
@@ -288,7 +302,7 @@ def edit_saved_recipe(request, token):
             request.session.modified = True
             messages.info(
                 request,
-                msg("Ұсыныс қабылданбады. Рецепттің бастапқы нұсқасы сақталды.", "Предложение отклонено. Исходная версия рецепта сохранена."),
+                _tr(language, "Ұсыныс қабылданбады. Рецепттің бастапқы нұсқасы сақталды.", "Предложение отклонено. Исходная версия рецепта сохранена."),
             )
             return redirect(
                 f"{reverse('recipes:edit_saved_recipe', args=[saved.token])}?language={language}"
@@ -298,7 +312,9 @@ def edit_saved_recipe(request, token):
             request,
             saved,
             language,
-            edit_error=msg("Ұсыныс ескірген немесе жарамсыз. Жаңа ұсыныс жасаңыз.", "Предложение истекло или уже недействительно. Создай новое предложение."),
+            edit_error=(
+                _tr(language, "Ұсыныстың мерзімі аяқталды немесе ол жарамсыз. Жаңа ұсыныс жаса.", "Предложение истекло или уже недействительно. Создай новое предложение.")
+            ),
         )
 
     if action == "confirm":
@@ -308,16 +324,19 @@ def edit_saved_recipe(request, token):
                 request,
                 saved,
                 language,
-                edit_error=msg("Ұсыныс ескірген немесе жарамсыз. Жаңа ұсыныс жасаңыз.", "Предложение истекло или уже недействительно. Создай новое предложение."),
+                edit_error=(
+                    _tr(language, "Ұсыныстың мерзімі аяқталды немесе ол жарамсыз. Жаңа ұсыныс жаса.", "Предложение истекло или уже недействительно. Создай новое предложение.")
+                ),
             )
 
         original_recipe = pending.get("original_recipe")
         candidate_recipe = pending.get("candidate_recipe")
 
         try:
+            # Не доверяем даже данным из сессии без повторной проверки формата.
             candidate_data = decode_recipe(candidate_recipe)
             if candidate_data is None:
-                raise RecipeFormatError("Формат предложения не поддерживается.")
+                raise RecipeFormatError(_tr(language, "Ұсыныс пішіміне қолдау көрсетілмейді.", "Формат предложения не поддерживается."))
             candidate_encoded = encode_recipe(candidate_data)
 
             if candidate_encoded == original_recipe:
@@ -327,10 +346,14 @@ def edit_saved_recipe(request, token):
                     request,
                     saved,
                     language,
-                    edit_error=msg("Ұсыныс бастапқы рецепттен еш өзгешеленбейді. Өзгерістер сақталмады.", "Предложение не отличается от исходного рецепта. Изменения не сохранены."),
+                    edit_error=(
+                        _tr(language, "Ұсыныс бастапқы рецепттен ерекшеленбейді. Өзгерістер сақталмады.", "Предложение не отличается от исходного рецепта. Изменения не сохранены.")
+                    ),
                 )
 
             with transaction.atomic():
+                # Conditional UPDATE предотвращает принятие устаревшего
+                # предложения, даже если другой запрос изменил рецепт.
                 updated = SavedRecipe.objects.filter(
                     pk=saved.pk,
                     token=saved.token,
@@ -339,10 +362,11 @@ def edit_saved_recipe(request, token):
 
                 if updated != 1:
                     raise ValueError(
-                        msg("Бастапқы рецепт өзгеріп кетті. Ұсынысты енді қабылдау мүмкін емес.", "Исходный рецепт уже изменился. Предложение больше нельзя принять.")
+                        _tr(language, "Бастапқы рецепт өзгеріп кеткен. Бұл ұсынысты енді қабылдау мүмкін емес.", "Исходный рецепт уже изменился. Предложение больше нельзя принять.")
                     )
 
-                # Очищаем старые версии, сохраняя только одну (последнюю)
+                # Храним только одну предыдущую версию на рецепт.
+                # Старые дубликаты удаляются, новый снимок создаётся атомарно.
                 RecipeVersion.objects.filter(saved_recipe=saved).delete()
                 RecipeVersion.objects.create(
                     saved_recipe=saved,
@@ -365,21 +389,25 @@ def edit_saved_recipe(request, token):
                 request,
                 saved,
                 language,
-                edit_error=msg("Ұсыныс дұрыс емес, сақталмады. Жаңа ұсыныс жасаңыз.", "Предложение некорректно и не было сохранено. Создай новое предложение."),
+                edit_error=(
+                    _tr(language, "Ұсыныс дұрыс емес, сақталмады. Жаңа ұсыныс жаса.", "Предложение некорректно и не было сохранено. Создай новое предложение.")
+                ),
             )
         except DatabaseError:
             return _render_editor(
                 request,
                 saved,
                 language,
-                edit_error=msg("Өзгерісті қауіпсіз сақтау мүмкін болмады. Рецепт жаңартылған болып саналмауы керек. Қайталап көріңіз.", "Не удалось безопасно сохранить изменение. Рецепт не должен считаться обновлённым. Попробуй ещё раз."),
+                edit_error=(
+                    _tr(language, "Өзгерісті қауіпсіз сақтау мүмкін болмады. Рецепт жаңартылған жоқ. Қайталап көр.", "Не удалось безопасно сохранить изменение. Рецепт не должен считаться обновлённым. Попробуй ещё раз.")
+                ),
             )
 
         request.session.pop(PENDING_KEY, None)
         request.session.modified = True
         messages.success(
             request,
-            msg("Жаңа нұсқа қабылданды. Алдыңғы нұсқа тарихта сақталды.", "Новая версия принята. Предыдущая версия сохранена в истории."),
+            _tr(language, "Жаңа нұсқа қабылданды. Алдыңғы нұсқа сақталды.", "Новая версия принята. Предыдущая версия сохранена."),
         )
         return redirect(
             f"{reverse('recipes:edit_saved_recipe', args=[saved.token])}?language={language}"
@@ -393,7 +421,7 @@ def edit_saved_recipe(request, token):
                 request,
                 saved,
                 language,
-                edit_error=msg("Қайтару үшін дұрыс нұсқа таңдалмаған.", "Не выбрана корректная версия для отката."),
+                edit_error=_tr(language, "Қалпына келтіру үшін дұрыс нұсқа таңдалмаған.", "Не выбрана корректная версия для отката."),
             )
 
         try:
@@ -412,18 +440,20 @@ def edit_saved_recipe(request, token):
                 current_recipe = locked_saved.recipe
                 target_recipe = target_version.recipe
 
+                # Не создаём пустые дубликаты истории при повторном нажатии.
                 if target_recipe == current_recipe:
                     return _render_editor(
                         request,
                         locked_saved,
                         language,
-                        edit_error=msg("Бұл нұсқа қазірдің өзінде ағымдағы нұсқа болып табылады.", "Этот вариант уже является текущей версией."),
+                        edit_error=_tr(language, "Бұл нұсқа қазірдің өзінде қолданыста.", "Этот вариант уже является текущей версией."),
                     )
 
+                # Проверяем сохранённый исторический текст перед восстановлением.
                 target_data = decode_recipe(target_recipe)
                 if target_data is None:
                     raise RecipeFormatError(
-                        msg("Таңдалған нұсқа қауіпсіз қайтаруды қолдамайды.", "Выбранная версия не поддерживает безопасный откат.")
+                        _tr(language, "Таңдалған нұсқаны қауіпсіз қалпына келтіру мүмкін емес.", "Выбранная версия не поддерживает безопасный откат.")
                     )
                 target_encoded = encode_recipe(target_data)
 
@@ -435,10 +465,11 @@ def edit_saved_recipe(request, token):
 
                 if updated != 1:
                     raise ValueError(
-                        msg("Рецепт үлгеріп өзгерді. Бетті жаңартып, қайталап көріңіз.", "Рецепт успел измениться. Обнови страницу и повтори откат.")
+                        _tr(language, "Рецепт өзгеріп кеткен. Бетті жаңартып, қайта қалпына келтір.", "Рецепт успел измениться. Обнови страницу и повтори откат.")
                     )
 
-                # Очищаем старые версии, сохраняя только текущую (перед откатом)
+                # Сохраняем только один снимок: текущую версию до отката.
+                # Это позволяет отменить откат, не накапливая дубликаты.
                 RecipeVersion.objects.filter(saved_recipe=locked_saved).delete()
                 RecipeVersion.objects.create(
                     saved_recipe=locked_saved,
@@ -450,7 +481,11 @@ def edit_saved_recipe(request, token):
                 request,
                 saved,
                 language,
-                edit_error=str(exc),
+                edit_error=_tr(
+                    language,
+                    f"Таңдалған рецепт нұсқасының пішімі дұрыс емес: {exc}",
+                    f"Некорректный формат выбранной версии рецепта: {exc}",
+                ),
             )
         except ValueError as exc:
             return _render_editor(
@@ -464,14 +499,16 @@ def edit_saved_recipe(request, token):
                 request,
                 saved,
                 language,
-                edit_error=msg("Қайтаруды қауіпсіз орындау мүмкін болмады. Өзгеріс расталмады.", "Не удалось безопасно выполнить откат. Изменение не подтверждено."),
+                edit_error=(
+                    _tr(language, "Нұсқаны қауіпсіз қалпына келтіру мүмкін болмады. Өзгеріс расталмады.", "Не удалось безопасно выполнить откат. Изменение не подтверждено.")
+                ),
             )
 
         request.session.pop(PENDING_KEY, None)
         request.session.modified = True
         messages.success(
             request,
-            msg("Алдыңғы нұсқа қалпына келтірілді. Қайтаруға дейінгі нұсқа тарихта сақталды.", "Предыдущая версия восстановлена. Версия до отката сохранена в истории."),
+            _tr(language, "Алдыңғы нұсқа қалпына келтірілді. Қалпына келтіруге дейінгі нұсқа сақталды.", "Предыдущая версия восстановлена. Версия до отката сохранена."),
         )
         return redirect(
             f"{reverse('recipes:edit_saved_recipe', args=[saved.token])}?language={language}"
@@ -481,5 +518,5 @@ def edit_saved_recipe(request, token):
         request,
         saved,
         language,
-        edit_error=msg("Белгісіз әрекет.", "Неизвестное действие."),
+        edit_error=_tr(language, "Белгісіз әрекет.", "Неизвестное действие."),
     )
